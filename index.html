@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ทะเบียนข้อมูลทหารติมอร์</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for better aesthetics and responsiveness */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.75);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            color: white;
+            transition: opacity 0.3s ease-in-out;
+            opacity: 0; /* Hidden by default */
+            pointer-events: none; /* Allows clicks through when hidden */
+        }
+        .loading-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .progress-bar-container {
+            width: 70%;
+            max-width: 300px;
+            background-color: #4a5568;
+            border-radius: 9999px;
+            height: 10px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #48bb78; /* Green */
+            width: 0%;
+            transition: width 0.3s ease-out;
+            border-radius: 9999px;
+        }
+        .message-box {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 10px 15px rgba(0, 0, 0, 0.1);
+            color: white;
+            z-index: 9998;
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+            transform: translateY(-100%);
+            opacity: 0;
+        }
+        .message-box.active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .message-box.success {
+            background-color: #48bb78; /* Green */
+        }
+        .message-box.error {
+            background-color: #e53e3e; /* Red */
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background-color: #2d3748; /* gray-800 */
+            border-radius: 0.75rem;
+            padding: 2rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+            position: relative;
+            max-width: 90%;
+            width: 500px;
+        }
+        @media (max-width: 768px) {
+            .tabs-container button {
+                font-size: 0.9rem;
+                padding: 0.75rem 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-500 to-indigo-700 text-gray-100 font-sans flex flex-col items-center p-4">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="text-white text-lg mb-4">กำลังดำเนินการ...</div>
+        <div class="progress-bar-container">
+            <div id="progress-bar" class="progress-bar"></div>
+        </div>
+    </div>
+
+    <!-- Message Box -->
+    <div id="message-box" class="message-box"></div>
+
+    <div class="w-full max-w-4xl bg-gray-800 rounded-xl shadow-2xl p-6 md:p-8">
+        <!-- Header -->
+        <div class="flex flex-col items-center mb-6">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/d/dc/INTERFET_Logo.jpg" alt="INTERFET Logo" class="w-32 h-32 rounded-full border-4 border-yellow-400 object-cover mb-4 shadow-lg" onerror="this.onerror=null;this.src='https://placehold.co/128x128/FFD700/000000?text=Logo';" />
+            <h1 class="text-4xl md:text-5xl font-extrabold text-white text-center drop-shadow-lg">
+                ทะเบียนข้อมูลทหารติมอร์
+            </h1>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex justify-center mb-8 bg-gray-700 rounded-full p-1 shadow-inner tabs-container">
+            <button id="tab-register" class="flex-1 py-3 px-4 rounded-full text-lg font-semibold transition-all duration-300 bg-indigo-600 text-white shadow-md">
+                บันทึกข้อมูลทหาร
+            </button>
+            <button id="tab-view" class="flex-1 py-3 px-4 rounded-full text-lg font-semibold transition-all duration-300 text-gray-300 hover:bg-gray-600">
+                ข้อมูลทั้งหมด
+            </button>
+            <button id="tab-saving" class="flex-1 py-3 px-4 rounded-full text-lg font-semibold transition-all duration-300 text-gray-300 hover:bg-gray-600">
+                บันทึกการออม
+            </button>
+            <button id="tab-saving-report" class="flex-1 py-3 px-4 rounded-full text-lg font-semibold transition-all duration-300 text-gray-300 hover:bg-gray-600">
+                รายงานการออม
+            </button>
+        </div>
+
+        <!-- Content Area -->
+        <div id="content-area" class="bg-gray-700 rounded-xl p-6 shadow-lg">
+            <!-- Content will be dynamically loaded here by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="w-full text-center mt-10 text-gray-400 text-sm">
+        <p>© 2025 สงวนลิขสิทธิ์โปรแกรม จัดทำโดย พันจ่าเอกสุชาติ สิงห์วงศ์ | ทะเบียนข้อมูลทหารติมอร์</p>
+    </footer>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-2xl font-bold text-white mb-6 text-center">แก้ไขข้อมูลทหาร</h3>
+            <button id="close-edit-modal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-200 transition-colors duration-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <form id="edit-form" class="space-y-4">
+                <input type="hidden" id="edit-no">
+                <div>
+                    <label for="edit-title" class="block text-gray-300 text-sm font-bold mb-2">คำนำหน้า/ยศ:</label>
+                    <select id="edit-title" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" required>
+                        <option value="">-- เลือก --</option>
+                        <optgroup label="คำนำหน้าทั่วไป">
+                            <option value="นาย">นาย</option>
+                            <option value="นาง">นาง</option>
+                            <option value="นางสาว">นางสาว</option>
+                        </optgroup>
+                        <optgroup label="ยศทางทหารเรือ">
+                            <option value="จ่าตรี">จ่าตรี</option>
+                            <option value="จ่าโท">จ่าโท</option>
+                            <option value="จ่าเอก">จ่าเอก</option>
+                            <option value="พันจ่าตรี">พันจ่าตรี</option>
+                            <option value="พันจ่าโท">พันจ่าโท</option>
+                            <option value="พันจ่าเอก">พันจ่าเอก</option>
+                            <option value="พันจ่าพิเศษ">พันจ่าพิเศษ</option>
+                            <option value="เรือตรี">เรือตรี</option>
+                            <option value="เรือโท">เรือโท</option>
+                            <option value="เรือเอก">เรือเอก</option>
+                            <option value="นาวาตรี">นาวาตรี</option>
+                            <option value="นาวาโท">นาวาโท</option>
+                            <option value="นาวาเอก">นาวาเอก</option>
+                            <option value="พลเรือตรี">พลเรือตรี</option>
+                            <option value="พลเรือโท">พลเรือโท</option>
+                            <option value="พลเรือเอก">พลเรือเอก</option>
+                            <option value="จอมพลเรือ">จอมพลเรือ</option>
+                        </optgroup>
+                        <option value="custom">อื่นๆ (พิมพ์เอง)</option>
+                    </select>
+                    <input type="text" id="edit-custom-title" placeholder="พิมพ์คำนำหน้า/ยศ" class="mt-2 shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 hidden" required />
+                </div>
+                <div>
+                    <label for="edit-name" class="block text-gray-300 text-sm font-bold mb-2">ชื่อ-นามสกุล:</label>
+                    <input type="text" id="edit-name" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" required />
+                </div>
+                <div>
+                    <label for="edit-birthday" class="block text-gray-300 text-sm font-bold mb-2">วดป. เกิด:</label>
+                    <input type="date" id="edit-birthday" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" required />
+                </div>
+                <div>
+                    <label for="edit-workday" class="block text-gray-300 text-sm font-bold mb-2">วดป. รับราชการ:</label>
+                    <input type="date" id="edit-workday" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" required />
+                </div>
+                <div>
+                    <label for="edit-phone" class="block text-gray-300 text-sm font-bold mb-2">เบอร์โทร:</label>
+                    <input type="tel" id="edit-phone" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" required />
+                </div>
+                <div>
+                    <label for="edit-address" class="block text-gray-300 text-sm font-bold mb-2">ที่อยู่ปัจจุบัน:</label>
+                    <textarea id="edit-address" rows="3" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" required></textarea>
+                </div>
+                <div>
+                    <label for="edit-idLine" class="block text-gray-300 text-sm font-bold mb-2">ไอดีไลน์:</label>
+                    <input type="text" id="edit-idLine" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" />
+                </div>
+                <div>
+                    <label for="edit-fb" class="block text-gray-300 text-sm font-bold mb-2">เฟสบุ๊ค:</label>
+                    <input type="text" id="edit-fb" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" />
+                </div>
+                <div>
+                    <label for="edit-remake" class="block text-gray-300 text-sm font-bold mb-2">หมายเหตุ:</label>
+                    <textarea id="edit-remake" rows="2" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200"></textarea>
+                </div>
+                <div>
+                    <label for="edit-admin-password" class="block text-gray-300 text-sm font-bold mb-2">รหัสผ่าน (1234) <span class="text-red-400">*</span>:</label>
+                    <input type="password" id="edit-admin-password" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" required />
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-700 transition duration-200 shadow-md transform hover:scale-105">
+                    บันทึกการแก้ไข
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal-overlay" class="modal-overlay">
+        <div class="modal-content text-center">
+            <h3 class="text-2xl font-bold text-white mb-4">ยืนยันการลบข้อมูล</h3>
+            <p class="text-gray-300 mb-6">คุณแน่ใจหรือไม่ที่จะลบข้อมูลของ <span id="delete-name" class="font-semibold text-yellow-400"></span> (Code: <span id="delete-code-per" class="font-semibold text-yellow-400"></span>)?</p>
+            <form id="delete-form" class="space-y-4">
+                <input type="hidden" id="delete-no-input">
+                <div>
+                    <label for="delete-admin-password" class="block text-gray-300 text-sm font-bold mb-2">รหัสผ่าน (1234) <span class="text-red-400">*</span>:</label>
+                    <input type="password" id="delete-admin-password" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" required />
+                </div>
+                <div class="flex justify-around space-x-4">
+                    <button type="button" id="close-delete-modal" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-700 transition duration-200 shadow-md transform hover:scale-105">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-700 transition duration-200 shadow-md transform hover:scale-105">
+                        ลบ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx2V81fAWvELt9KtWivG0yzllXVEN9cVtC7PZLbOy6lvx7xFHgDJt_UE-SGvKdhcy2B/exec';
+        const LOGO_URL = 'https://upload.wikimedia.org/wikipedia/commons/d/dc/INTERFET_Logo.jpg';
+
+        // DOM Elements
+        const contentArea = document.getElementById('content-area');
+        const tabs = {
+            register: document.getElementById('tab-register'),
+            view: document.getElementById('tab-view'),
+            saving: document.getElementById('tab-saving'),
+            'saving-report': document.getElementById('tab-saving-report')
+        };
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const progressBar = document.getElementById('progress-bar');
+        const messageBox = document.getElementById('message-box');
+
+        // Modal Elements
+        const editModalOverlay = document.getElementById('edit-modal-overlay');
+        const closeEditModalBtn = document.getElementById('close-edit-modal');
+        const editForm = document.getElementById('edit-form');
+        const editNoInput = document.getElementById('edit-no');
+        const editTitleSelect = document.getElementById('edit-title');
+        const editCustomTitleInput = document.getElementById('edit-custom-title');
+        const editNameInput = document.getElementById('edit-name');
+        const editBirthdayInput = document.getElementById('edit-birthday');
+        const editWorkdayInput = document.getElementById('edit-workday');
+        const editPhoneInput = document.getElementById('edit-phone');
+        const editAddressInput = document.getElementById('edit-address');
+        const editIdLineInput = document.getElementById('edit-idLine');
+        const editFbInput = document.getElementById('edit-fb');
+        const editRemakeInput = document.getElementById('edit-remake');
+        const editAdminPasswordInput = document.getElementById('edit-admin-password');
+
+        const deleteModalOverlay = document.getElementById('delete-modal-overlay');
+        const closeDeleteModalBtn = document.getElementById('close-delete-modal');
+        const deleteForm = document.getElementById('delete-form');
+        const deleteNameSpan = document.getElementById('delete-name');
+        const deleteCodePerSpan = document.getElementById('delete-code-per');
+        const deleteNoInput = document.getElementById('delete-no-input');
+        const deleteAdminPasswordInput = document.getElementById('delete-admin-password');
+
+
+        // Data variables
+        let personalData = [];
+        let savingData = [];
+        let currentEditData = null; // To hold data of the row being edited/deleted
+        let searchTerm = ''; // Declare searchTerm in global scope
+        let savingSearchTerm = ''; // Declare savingSearchTerm in global scope
+
+        // Predefined lists for titles and ranks
+        const generalTitles = ["นาย", "นาง", "นางสาว"];
+        const militaryRanks = [
+            "จ่าตรี", "จ่าโท", "จ่าเอก",
+            "พันจ่าตรี", "พันจ่าโท", "พันจ่าเอก", "พันจ่าพิเศษ",
+            "เรือตรี", "เรือโท", "เรือเอก",
+            "นาวาตรี", "นาวาโท", "นาวาเอก",
+            "พลเรือตรี", "พลเรือโท", "พลเรือเอก", "จอมพลเรือ"
+        ];
+        const allPredefinedTitles = [...generalTitles, ...militaryRanks];
+
+
+        // Function to show/hide loading overlay
+        function showLoading(show, progress = 0) {
+            if (show) {
+                loadingOverlay.classList.add('active');
+                progressBar.style.width = `${progress}%`;
+            } else {
+                loadingOverlay.classList.remove('active');
+            }
+        }
+
+        // Function to show messages (success/error)
+        function showMessage(type, text) {
+            messageBox.textContent = text;
+            messageBox.className = `message-box active ${type}`; // Reset classes and add new ones
+            setTimeout(() => {
+                messageBox.classList.remove('active');
+            }, 5000); // Hide after 5 seconds
+        }
+
+        // Function to fetch data from Google Sheets
+        async function fetchData(sheetName, callback, showLoadingUI = true) {
+            if (showLoadingUI) {
+                showLoading(true, 0);
+                let currentProgress = 0;
+                const interval = setInterval(() => {
+                    currentProgress += 10;
+                    if (currentProgress <= 90) {
+                        progressBar.style.width = `${currentProgress}%`;
+                    } else {
+                        clearInterval(interval);
+                    }
+                }, 100);
+            }
+
+            try {
+                const response = await fetch(`${SCRIPT_URL}?sheet=${sheetName}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const rawData = await response.json(); // Get raw JSON
+
+                // Ensure data is always an array before passing to callback
+                const processedData = Array.isArray(rawData) ? rawData : [];
+
+                callback(processedData); // Pass the guaranteed array to the callback
+
+                if (showLoadingUI) {
+                    progressBar.style.width = '100%';
+                    showMessage('success', `ข้อมูลจากชีท "${sheetName}" โหลดสำเร็จแล้ว!`);
+                }
+            } catch (error) {
+                console.error(`Error fetching ${sheetName} data:`, error);
+                if (showLoadingUI) {
+                    progressBar.style.width = '100%';
+                    showMessage('error', `เกิดข้อผิดพลาดในการโหลดข้อมูลจากชีท "${sheetName}"`);
+                }
+                // On fetch error, ensure callback still receives an empty array to prevent further errors
+                callback([]);
+            } finally {
+                if (showLoadingUI) {
+                    setTimeout(() => showLoading(false), 500); // Give time for progress bar to finish
+                }
+            }
+        }
+
+        // Function to render the Soldier Registration Form
+        function renderRegisterForm() {
+            contentArea.innerHTML = `
+                <form id="register-form" class="space-y-6">
+                    <h2 class="text-3xl font-bold text-white mb-6 text-center">บันทึกข้อมูลทหารใหม่</h2>
+                    
+                    <div>
+                        <label for="title" class="block text-gray-300 text-sm font-bold mb-2">คำนำหน้า/ยศ:</label>
+                        <select id="title" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" required>
+                            <option value="">-- เลือก --</option>
+                            <optgroup label="คำนำหน้าทั่วไป">
+                                ${generalTitles.map(t => `<option value="${t}">${t}</option>`).join('')}
+                            </optgroup>
+                            <optgroup label="ยศทางทหารเรือ">
+                                ${militaryRanks.map(r => `<option value="${r}">${r}</option>`).join('')}
+                            </optgroup>
+                            <option value="custom">อื่นๆ (พิมพ์เอง)</option>
+                        </select>
+                        <input type="text" id="custom-title" placeholder="พิมพ์คำนำหน้า/ยศ" class="mt-2 shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 hidden" required />
+                    </div>
+
+                    <div>
+                        <label for="name" class="block text-gray-300 text-sm font-bold mb-2">ชื่อ-นามสกุล <span class="text-red-400">*</span>:</label>
+                        <input type="text" id="name" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" required />
+                    </div>
+                    <div>
+                        <label for="birthday" class="block text-gray-300 text-sm font-bold mb-2">วดป. เกิด <span class="text-red-400">*</span>:</label>
+                        <input type="date" id="birthday" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" required />
+                    </div>
+                    <div>
+                        <label for="workday" class="block text-gray-300 text-sm font-bold mb-2">วดป. รับราชการ <span class="text-red-400">*</span>:</label>
+                        <input type="date" id="workday" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" required />
+                    </div>
+                    <div>
+                        <label for="phone" class="block text-gray-300 text-sm font-bold mb-2">เบอร์โทร <span class="text-red-400">*</span>:</label>
+                        <input type="tel" id="phone" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" required />
+                    </div>
+                    <div>
+                        <label for="address" class="block text-gray-300 text-sm font-bold mb-2">ที่อยู่ปัจจุบัน <span class="text-red-400">*</span>:</label>
+                        <textarea id="address" rows="3" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" required></textarea>
+                    </div>
+                    <div>
+                        <label for="idLine" class="block text-gray-300 text-sm font-bold mb-2">ไอดีไลน์:</label>
+                        <input type="text" id="idLine" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" />
+                    </div>
+                    <div>
+                        <label for="fb" class="block text-gray-300 text-sm font-bold mb-2">เฟสบุ๊ค:</label>
+                        <input type="text" id="fb" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" />
+                    </div>
+                    <div>
+                        <label for="remake" class="block text-gray-300 text-sm font-bold mb-2">หมายเหตุ:</label>
+                        <textarea id="remake" rows="2" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200"></textarea>
+                    </div>
+
+                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-700 transition duration-200 shadow-md transform hover:scale-105">
+                        บันทึกข้อมูล
+                    </button>
+                </form>
+            `;
+
+            // Add event listener for title dropdown
+            const titleSelect = document.getElementById('title');
+            const customTitleInput = document.getElementById('custom-title');
+            titleSelect.addEventListener('change', (e) => {
+                if (e.target.value === 'custom') {
+                    customTitleInput.classList.remove('hidden');
+                    customTitleInput.focus();
+                } else {
+                    customTitleInput.classList.add('hidden');
+                    customTitleInput.value = ''; // Clear custom input when not in use
+                }
+            });
+
+            // Add form submission listener
+            document.getElementById('register-form').addEventListener('submit', handleRegisterSubmit);
+        }
+
+        // Function to render the All Data Table
+        function renderViewTable() {
+            contentArea.innerHTML = `
+                <div>
+                    <h2 class="text-3xl font-bold text-white mb-6 text-center">ข้อมูลทหารทั้งหมด</h2>
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-4 space-y-4 md:space-y-0 md:space-x-4">
+                        <input type="text" id="search-term" placeholder="ค้นหาข้อมูล..." class="shadow appearance-none border border-gray-600 rounded-lg py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 flex-grow" />
+                        <button id="refresh-personal-data" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-700 transition duration-200 shadow-md transform hover:scale-105 w-full md:w-auto">
+                            รีเฟรชข้อมูล
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-lg shadow-md border border-gray-600">
+                        <table class="min-w-full divide-y divide-gray-600">
+                            <thead class="bg-gray-800">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">no</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Code_per</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">title</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">name</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">birthday</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">workday</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">phone</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">address</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Id line</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Fb</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">remake</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">timestamp</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="personal-data-body" class="bg-gray-700 divide-y divide-gray-600">
+                                <!-- Data will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            document.getElementById('refresh-personal-data').addEventListener('click', () => fetchData('personal', (data) => {
+                personalData = data;
+                updatePersonalTable();
+            }));
+            document.getElementById('search-term').addEventListener('input', (e) => {
+                searchTerm = e.target.value;
+                updatePersonalTable();
+            });
+            updatePersonalTable(); // Initial load for the table
+            fetchData('personal', (data) => {
+                personalData = data;
+                updatePersonalTable();
+            });
+        }
+
+        // Function to update the personal data table dynamically
+        function updatePersonalTable() {
+            const tbody = document.getElementById('personal-data-body');
+            tbody.innerHTML = ''; // Clear existing rows
+
+            const filteredData = personalData.filter(item =>
+                Object.values(item).some(val =>
+                    String(val).toLowerCase().includes(searchTerm.toLowerCase())
+                )
+            );
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="13" class="px-4 py-3 text-center text-gray-400">ไม่พบข้อมูลทหาร</td></tr>`;
+                return;
+            }
+
+            filteredData.forEach(item => {
+                const row = tbody.insertRow();
+                row.className = "hover:bg-gray-600 transition-colors duration-150";
+                row.innerHTML = `
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.no}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.Code_per}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.title}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.name}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.birthday}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.workday}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.phone}</td>
+                    <td class="px-4 py-3 whitespace-pre-wrap text-sm text-gray-200">${item.address}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item['Id line']}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.Fb}</td>
+                    <td class="px-4 py-3 whitespace-pre-wrap text-sm text-gray-200">${item.remake}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.timestamp}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                        <div class="flex space-x-2">
+                            <button class="text-indigo-400 hover:text-indigo-600 focus:outline-none transition-colors duration-200 edit-btn" data-no="${item.no}" title="แก้ไข">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.38-2.827-2.828z" />
+                                </svg>
+                            </button>
+                            <button class="text-red-400 hover:text-red-600 focus:outline-none transition-colors duration-200 delete-btn" data-no="${item.no}" title="ลบ">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                `;
+            });
+
+            // Attach event listeners to new buttons
+            document.querySelectorAll('.edit-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const no = e.currentTarget.dataset.no;
+                    const dataToEdit = personalData.find(d => d.no == no); // Use == for comparison as no could be string from dataset
+                    openEditModal(dataToEdit);
+                });
+            });
+            document.querySelectorAll('.delete-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const no = e.currentTarget.dataset.no;
+                    const dataToDelete = personalData.find(d => d.no == no);
+                    openDeleteModal(dataToDelete);
+                });
+            });
+        }
+
+
+        // Function to render the Saving Entry Form
+        function renderSavingForm() {
+            contentArea.innerHTML = `
+                <form id="saving-form" class="space-y-6">
+                    <h2 class="text-3xl font-bold text-white mb-6 text-center">บันทึกการออม</h2>
+                    
+                    <div class="mb-4">
+                        <label for="select-soldier" class="block text-gray-300 text-sm font-bold mb-2">เลือกทหาร:</label>
+                        <select id="select-soldier" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" required>
+                            <option value="">-- เลือกชื่อทหาร --</option>
+                            <!-- Options will be dynamically added here -->
+                        </select>
+                        <p class="text-gray-400 text-xs mt-1">
+                            หากไม่พบชื่อ โปรดไปที่ "ข้อมูลทั้งหมด" และรีเฟรชข้อมูล หรือเพิ่มข้อมูลทหารก่อน
+                        </p>
+                    </div>
+
+                    <div>
+                        <label for="saving-amount" class="block text-gray-300 text-sm font-bold mb-2">จำนวนเงิน <span class="text-red-400">*</span>:</label>
+                        <input type="number" id="saving-amount" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" required />
+                    </div>
+
+                    <div>
+                        <label for="saving-date" class="block text-gray-300 text-sm font-bold mb-2">วันที่ <span class="text-red-400">*</span>:</label>
+                        <input type="date" id="saving-date" class="shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" required />
+                    </div>
+
+                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-700 transition duration-200 shadow-md transform hover:scale-105">
+                        บันทึกการออม
+                    </button>
+                </form>
+            `;
+            populateSoldierDropdown(); // Populate dropdown when rendering
+            document.getElementById('saving-form').addEventListener('submit', handleSavingSubmit);
+        }
+
+        // Populate the soldier dropdown for saving form
+        function populateSoldierDropdown() {
+            const selectSoldier = document.getElementById('select-soldier');
+            selectSoldier.innerHTML = '<option value="">-- เลือกชื่อทหาร --</option>'; // Clear and add default
+            personalData.forEach(soldier => {
+                const option = document.createElement('option');
+                option.value = soldier.Code_per;
+                option.textContent = `${soldier.name} (Code: ${soldier.Code_per})`;
+                selectSoldier.appendChild(option);
+            });
+        }
+
+
+        // Function to render the Saving Report Dashboard
+        function renderSavingReport() {
+            const totalSavingAmount = savingData.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+            const numberOfSavingTransactions = savingData.length;
+            const averageSavingAmount = numberOfSavingTransactions > 0 ? (totalSavingAmount / numberOfSavingTransactions) : 0;
+
+            contentArea.innerHTML = `
+                <div>
+                    <h2 class="text-3xl font-bold text-white mb-6 text-center">ภาพรวมรายงานการออม</h2>
+
+                    <!-- Summary Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-indigo-600 rounded-lg p-5 shadow-lg flex flex-col items-center justify-center text-center">
+                            <p class="text-sm font-medium text-indigo-200">ยอดรวมเงินออม</p>
+                            <p class="text-3xl font-extrabold text-white mt-2">
+                                ${totalSavingAmount.toLocaleString('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 2 })}
+                            </p>
+                        </div>
+                        <div class="bg-purple-600 rounded-lg p-5 shadow-lg flex flex-col items-center justify-center text-center">
+                            <p class="text-sm font-medium text-purple-200">จำนวนรายการ</p>
+                            <p class="text-3xl font-extrabold text-white mt-2">
+                                ${numberOfSavingTransactions.toLocaleString('th-TH')} รายการ
+                            </p>
+                        </div>
+                        <div class="bg-teal-600 rounded-lg p-5 shadow-lg flex flex-col items-center justify-center text-center">
+                            <p class="text-sm font-medium text-teal-200">ออมเฉลี่ยต่อรายการ</p>
+                            <p class="text-3xl font-extrabold text-white mt-2">
+                                ${averageSavingAmount.toLocaleString('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 2 })}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-4 space-y-4 md:space-y-0 md:space-x-4">
+                        <input type="text" id="saving-search-term" placeholder="ค้นหารายงานการออม (ชื่อ, รหัส)..." class="shadow appearance-none border border-gray-600 rounded-lg py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 flex-grow" />
+                        <button id="refresh-saving-data" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-700 transition duration-200 shadow-md transform hover:scale-105 w-full md:w-auto">
+                            รีเฟรชข้อมูล
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-lg shadow-md border border-gray-600">
+                        <table class="min-w-full divide-y divide-gray-600">
+                            <thead class="bg-gray-800">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">no</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Code_per</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">name</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">amount</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">date</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody id="saving-data-body" class="bg-gray-700 divide-y divide-gray-600">
+                                <!-- Data will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            document.getElementById('refresh-saving-data').addEventListener('click', () => fetchData('saving', (data) => {
+                savingData = data;
+                updateSavingTable();
+            }));
+            document.getElementById('saving-search-term').addEventListener('input', (e) => {
+                savingSearchTerm = e.target.value;
+                updateSavingTable();
+            });
+            updateSavingTable(); // Initial load for the table
+            fetchData('saving', (data) => {
+                savingData = data;
+                updateSavingTable();
+            });
+        }
+
+        // Function to update the saving data table dynamically
+        function updateSavingTable() {
+            const tbody = document.getElementById('saving-data-body');
+            tbody.innerHTML = ''; // Clear existing rows
+
+            const filteredData = savingData.filter(item =>
+                Object.values(item).some(val =>
+                    String(val).toLowerCase().includes(savingSearchTerm.toLowerCase())
+                )
+            );
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-3 text-center text-gray-400">ไม่พบข้อมูลการออม</td></tr>`;
+                return;
+            }
+
+            filteredData.forEach(item => {
+                const row = tbody.insertRow();
+                row.className = "hover:bg-gray-600 transition-colors duration-150";
+                row.innerHTML = `
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.no}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.Code_per}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.name}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${parseFloat(item.amount).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.date}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.timestamp}</td>
+                `;
+            });
+        }
+
+        // Handle form submission for Soldier Registration
+        async function handleRegisterSubmit(e) {
+            e.preventDefault();
+            showLoading(true, 0);
+
+            const titleInput = document.getElementById('title');
+            const customTitleInput = document.getElementById('custom-title');
+            const nameInput = document.getElementById('name');
+            const birthdayInput = document.getElementById('birthday');
+            const workdayInput = document.getElementById('workday');
+            const phoneInput = document.getElementById('phone');
+            const addressInput = document.getElementById('address');
+            const idLineInput = document.getElementById('idLine');
+            const fbInput = document.getElementById('fb');
+            const remakeInput = document.getElementById('remake');
+
+            const currentTitle = titleInput.value === 'custom' ? customTitleInput.value : titleInput.value;
+
+            if (!currentTitle || !nameInput.value || !birthdayInput.value || !workdayInput.value || !phoneInput.value || !addressInput.value) {
+                showMessage('error', 'โปรดกรอกข้อมูลในช่องที่จำเป็นให้ครบถ้วน (ยกเว้นไอดีไลน์, เฟซบุ๊ก, หมายเหตุ)!');
+                showLoading(false);
+                return;
+            }
+
+            const payload = {
+                action: 'addPersonal',
+                payload: {
+                    title: currentTitle,
+                    name: nameInput.value,
+                    birthday: birthdayInput.value,
+                    workday: workdayInput.value,
+                    phone: phoneInput.value,
+                    address: addressInput.value,
+                    idLine: idLineInput.value,
+                    fb: fbInput.value,
+                    remake: remakeInput.value,
+                },
+            };
+
+            try {
+                let currentProgress = 0;
+                const interval = setInterval(() => {
+                    currentProgress += 10;
+                    if (currentProgress <= 90) {
+                        progressBar.style.width = `${currentProgress}%`;
+                    } else {
+                        clearInterval(interval);
+                    }
+                }, 100);
+
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain',
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('success', 'บันทึกข้อมูลทหารสำเร็จ!');
+                    // Clear form
+                    titleInput.value = '';
+                    customTitleInput.value = '';
+                    customTitleInput.classList.add('hidden');
+                    nameInput.value = '';
+                    birthdayInput.value = '';
+                    workdayInput.value = '';
+                    phoneInput.value = '';
+                    addressInput.value = '';
+                    idLineInput.value = '';
+                    fbInput.value = '';
+                    remakeInput.value = '';
+                    // Re-fetch personal data to update saving dropdown if user switches tab
+                    fetchData('personal', (data) => personalData = data, false);
+                } else {
+                    showMessage('error', `เกิดข้อผิดพลาด: ${result.message}`);
+                }
+                progressBar.style.width = '100%';
+            } catch (error) {
+                console.error('Error submitting form:', error);
+                showMessage('error', `เกิดข้อผิดพลาดในการบันทึกข้อมูล: ${error.message}`);
+                progressBar.style.width = '100%';
+            } finally {
+                setTimeout(() => showLoading(false), 500);
+            }
+        }
+
+        // Handle form submission for Saving Entry
+        async function handleSavingSubmit(e) {
+            e.preventDefault();
+            showLoading(true, 0);
+
+            const selectedSoldierCodePer = document.getElementById('select-soldier').value;
+            const savingAmount = document.getElementById('saving-amount').value;
+            const savingDate = document.getElementById('saving-date').value;
+
+            if (!selectedSoldierCodePer || !savingAmount || !savingDate) {
+                showMessage('error', 'โปรดเลือกชื่อทหารและกรอกจำนวนเงินกับวันที่!');
+                showLoading(false);
+                return;
+            }
+
+            const payload = {
+                action: 'addSaving',
+                payload: {
+                    codePer: selectedSoldierCodePer,
+                    amount: parseFloat(savingAmount),
+                    date: savingDate,
+                },
+            };
+
+            try {
+                let currentProgress = 0;
+                const interval = setInterval(() => {
+                    currentProgress += 10;
+                    if (currentProgress <= 90) {
+                        progressBar.style.width = `${currentProgress}%`;
+                    } else {
+                        clearInterval(interval);
+                    }
+                }, 100);
+
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain',
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('success', 'บันทึกการออมสำเร็จ!');
+                    // Clear form
+                    document.getElementById('select-soldier').value = '';
+                    document.getElementById('saving-amount').value = '';
+                    document.getElementById('saving-date').value = '';
+                    // Re-fetch saving data to update report
+                    fetchData('saving', (data) => savingData = data, false);
+                } else {
+                    showMessage('error', `เกิดข้อผิดพลาด: ${result.message}`);
+                }
+                progressBar.style.width = '100%';
+            } catch (error) {
+                console.error('Error submitting saving form:', error);
+                showMessage('error', `เกิดข้อผิดพลาดในการบันทึกการออม: ${error.message}`);
+                progressBar.style.width = '100%';
+            } finally {
+                setTimeout(() => showLoading(false), 500);
+            }
+        }
+
+        // Open Edit Modal
+        function openEditModal(data) {
+            currentEditData = data; // Store data for update
+            editNoInput.value = data.no;
+            
+            // Set title dropdown and custom input
+            if (allPredefinedTitles.includes(data.title)) {
+                editTitleSelect.value = data.title;
+                editCustomTitleInput.classList.add('hidden');
+                editCustomTitleInput.value = '';
+            } else {
+                editTitleSelect.value = 'custom';
+                editCustomTitleInput.value = data.title;
+                editCustomTitleInput.classList.remove('hidden');
+            }
+
+            editNameInput.value = data.name;
+            editBirthdayInput.value = data.birthday;
+            editWorkdayInput.value = data.workday;
+            editPhoneInput.value = data.phone;
+            editAddressInput.value = data.address;
+            editIdLineInput.value = data['Id line'];
+            editFbInput.value = data.Fb;
+            editRemakeInput.value = data.remake;
+            editAdminPasswordInput.value = ''; // Clear password field
+            editModalOverlay.classList.add('active');
+        }
+
+        // Handle Update operation
+        async function handleUpdate(e) {
+            e.preventDefault();
+            showLoading(true, 0);
+
+            const currentEditTitle = editTitleSelect.value === 'custom' ? editCustomTitleInput.value : editTitleSelect.value;
+
+            const payload = {
+                action: 'updatePersonal',
+                password: editAdminPasswordInput.value,
+                payload: {
+                    no: currentEditData.no, // Use currentEditData's no
+                    title: currentEditTitle,
+                    name: editNameInput.value,
+                    birthday: editBirthdayInput.value,
+                    workday: editWorkdayInput.value,
+                    phone: editPhoneInput.value,
+                    address: editAddressInput.value,
+                    'Id line': editIdLineInput.value,
+                    Fb: editFbInput.value,
+                    remake: editRemakeInput.value,
+                },
+            };
+
+            try {
+                let currentProgress = 0;
+                const interval = setInterval(() => {
+                    currentProgress += 10;
+                    if (currentProgress <= 90) {
+                        progressBar.style.width = `${currentProgress}%`;
+                    } else {
+                        clearInterval(interval);
+                    }
+                }, 100);
+
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain',
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('success', 'อัปเดตข้อมูลสำเร็จ!');
+                    editModalOverlay.classList.remove('active');
+                    // Re-fetch data to update table
+                    fetchData('personal', (data) => {
+                        personalData = data;
+                        updatePersonalTable();
+                    }, false);
+                } else {
+                    showMessage('error', `เกิดข้อผิดพลาดในการอัปเดต: ${result.message}`);
+                }
+                progressBar.style.width = '100%';
+            } catch (error) {
+                console.error('Error updating record:', error);
+                showMessage('error', `เกิดข้อผิดพลาดในการอัปเดต: ${error.message}`);
+                progressBar.style.width = '100%';
+            } finally {
+                setTimeout(() => showLoading(false), 500);
+            }
+        }
+
+        // Open Delete Confirmation Modal
+        function openDeleteModal(data) {
+            currentEditData = data; // Store data for deletion
+            deleteNameSpan.textContent = data.name;
+            deleteCodePerSpan.textContent = data.Code_per;
+            deleteNoInput.value = data.no;
+            deleteAdminPasswordInput.value = ''; // Clear password
+            deleteModalOverlay.classList.add('active');
+        }
+
+        // Handle Delete operation
+        async function handleDelete(e) {
+            e.preventDefault();
+            showLoading(true, 0);
+
+            const payload = {
+                action: 'deletePersonal',
+                password: deleteAdminPasswordInput.value,
+                payload: {
+                    no: currentEditData.no, // Use currentEditData's no
+                },
+            };
+
+            try {
+                let currentProgress = 0;
+                const interval = setInterval(() => {
+                    currentProgress += 10;
+                    if (currentProgress <= 90) {
+                        progressBar.style.width = `${currentProgress}%`;
+                    } else {
+                        clearInterval(interval);
+                    }
+                }, 100);
+
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain',
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('success', 'ลบข้อมูลสำเร็จ!');
+                    deleteModalOverlay.classList.remove('active');
+                    // Re-fetch data to update table
+                    fetchData('personal', (data) => {
+                        personalData = data;
+                        updatePersonalTable();
+                    }, false);
+                } else {
+                    showMessage('error', `เกิดข้อผิดพลาดในการลบ: ${result.message}`);
+                }
+                progressBar.style.width = '100%';
+            } catch (error) {
+                console.error('Error deleting record:', error);
+                showMessage('error', `เกิดข้อผิดพลาดในการลบ: ${error.message}`);
+                progressBar.style.width = '100%';
+            } finally {
+                setTimeout(() => showLoading(false), 500);
+            }
+        }
+
+        // Function to handle tab switching
+        function switchTab(tabName) {
+            // Remove active class from all tabs
+            Object.values(tabs).forEach(tab => {
+                tab.classList.remove('bg-indigo-600', 'text-white', 'shadow-md');
+                tab.classList.add('text-gray-300', 'hover:bg-gray-600');
+            });
+
+            // Add active class to the clicked tab
+            tabs[tabName].classList.add('bg-indigo-600', 'text-white', 'shadow-md');
+            tabs[tabName].classList.remove('text-gray-300', 'hover:bg-gray-600');
+
+            // Render content based on tab
+            if (tabName === 'register') {
+                renderRegisterForm();
+            } else if (tabName === 'view') {
+                renderViewTable();
+            } else if (tabName === 'saving') {
+                renderSavingForm();
+                fetchData('personal', (data) => personalData = data, false); // Fetch personal data for dropdown
+            } else if (tabName === 'saving-report') {
+                renderSavingReport();
+            }
+        }
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set initial tab to register
+            switchTab('register');
+
+            // Add event listeners for tab buttons
+            tabs.register.addEventListener('click', () => switchTab('register'));
+            tabs.view.addEventListener('click', () => switchTab('view'));
+            tabs.saving.addEventListener('click', () => switchTab('saving'));
+            tabs['saving-report'].addEventListener('click', () => switchTab('saving-report'));
+
+            // Event listeners for modals
+            closeEditModalBtn.addEventListener('click', () => editModalOverlay.classList.remove('active'));
+            editTitleSelect.addEventListener('change', (e) => {
+                if (e.target.value === 'custom') {
+                    editCustomTitleInput.classList.remove('hidden');
+                    editCustomTitleInput.focus();
+                } else {
+                    editCustomTitleInput.classList.add('hidden');
+                    editCustomTitleInput.value = '';
+                }
+            });
+            editForm.addEventListener('submit', handleUpdate);
+
+            closeDeleteModalBtn.addEventListener('click', () => deleteModalOverlay.classList.remove('active'));
+            deleteForm.addEventListener('submit', handleDelete);
+
+            // Initial fetch for personal data (needed for saving dropdowns)
+            fetchData('personal', (data) => personalData = data, false);
+            fetchData('saving', (data) => savingData = data, false);
+        });
+
+    </script>
+</body>
+</html>
