@@ -197,7 +197,7 @@
                         </optgroup>
                         <option value="custom">อื่นๆ (พิมพ์เอง)</option>
                     </select>
-                    <input type="text" id="edit-custom-title" placeholder="พิมพ์คำนำหน้า/ยศ" class="mt-2 shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 hidden" required />
+                    <input type="text" id="edit-custom-title" placeholder="พิมพ์คำนำหน้า/ยศ" class="mt-2 shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 hidden" />
                 </div>
                 <div>
                     <label for="edit-name" class="block text-gray-300 text-sm font-bold mb-2">ชื่อ-นามสกุล:</label>
@@ -288,7 +288,7 @@
         const editNoInput = document.getElementById('edit-no');
         const editTitleSelect = document.getElementById('edit-title');
         const editCustomTitleInput = document.getElementById('edit-custom-title');
-        const editNameInput = document.getElementById('edit-name');
+        const editNameInput = document = document.getElementById('edit-name');
         const editBirthdayInput = document.getElementById('edit-birthday');
         const editWorkdayInput = document.getElementById('edit-workday');
         const editPhoneInput = document.getElementById('edit-phone');
@@ -422,7 +422,7 @@
                             </optgroup>
                             <option value="custom">อื่นๆ (พิมพ์เอง)</option>
                         </select>
-                        <input type="text" id="custom-title" placeholder="พิมพ์คำนำหน้า/ยศ" class="mt-2 shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 hidden" required />
+                        <input type="text" id="custom-title" placeholder="พิมพ์คำนำหน้า/ยศ" class="mt-2 shadow appearance-none border border-gray-600 rounded-lg w-full py-3 px-4 bg-gray-800 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 hidden" />
                     </div>
 
                     <div>
@@ -470,9 +470,11 @@
             titleSelect.addEventListener('change', (e) => {
                 if (e.target.value === 'custom') {
                     customTitleInput.classList.remove('hidden');
+                    customTitleInput.required = true; // Add required attribute
                     customTitleInput.focus();
                 } else {
                     customTitleInput.classList.add('hidden');
+                    customTitleInput.required = false; // Remove required attribute
                     customTitleInput.value = ''; // Clear custom input when not in use
                 }
             });
@@ -868,6 +870,17 @@
 
             const currentTitle = titleInput.value === 'custom' ? customTitleInput.value : titleInput.value;
 
+            // Debugging: Log current values and required status
+            console.log("Current Title:", currentTitle);
+            console.log("Name:", nameInput.value);
+            console.log("Birthday:", birthdayInput.value);
+            console.log("Workday:", workdayInput.value);
+            console.log("Phone:", phoneInput.value);
+            console.log("Address:", addressInput.value);
+            console.log("Custom Title Required:", customTitleInput.required);
+            console.log("Custom Title Value:", customTitleInput.value);
+
+
             if (!currentTitle || !nameInput.value || !birthdayInput.value || !workdayInput.value || !phoneInput.value || !addressInput.value) {
                 showMessage('error', 'โปรดกรอกข้อมูลในช่องที่จำเป็นให้ครบถ้วน (ยกเว้นไอดีไลน์, เฟซบุ๊ก, หมายเหตุ)!');
                 showLoading(false);
@@ -919,6 +932,7 @@
                     titleInput.value = '';
                     customTitleInput.value = '';
                     customTitleInput.classList.add('hidden');
+                    customTitleInput.required = false; // Ensure required is false after clearing
                     nameInput.value = '';
                     birthdayInput.value = '';
                     workdayInput.value = '';
@@ -1020,11 +1034,13 @@
             if (allPredefinedTitles.includes(data.title)) {
                 editTitleSelect.value = data.title;
                 editCustomTitleInput.classList.add('hidden');
+                editCustomTitleInput.required = false; // Ensure required is false
                 editCustomTitleInput.value = '';
             } else {
                 editTitleSelect.value = 'custom';
                 editCustomTitleInput.value = data.title;
                 editCustomTitleInput.classList.remove('hidden');
+                editCustomTitleInput.required = true; // Ensure required is true
             }
 
             editNameInput.value = data.name;
@@ -1099,7 +1115,8 @@
                     showMessage('error', `เกิดข้อผิดพลาดในการอัปเดต: ${result.message}`);
                 }
                 progressBar.style.width = '100%';
-            } catch (error) {
+            }
+            catch (error) {
                 console.error('Error updating record:', error);
                 showMessage('error', `เกิดข้อผิดพลาดในการอัปเดต: ${error.message}`);
                 progressBar.style.width = '100%';
@@ -1217,9 +1234,11 @@
             editTitleSelect.addEventListener('change', (e) => {
                 if (e.target.value === 'custom') {
                     editCustomTitleInput.classList.remove('hidden');
+                    editCustomTitleInput.required = true; // Add required attribute
                     editCustomTitleInput.focus();
                 } else {
                     editCustomTitleInput.classList.add('hidden');
+                    editCustomTitleInput.required = false; // Remove required attribute
                     editCustomTitleInput.value = '';
                 }
             });
@@ -1236,4 +1255,3 @@
     </script>
 </body>
 </html>
-
