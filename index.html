@@ -98,7 +98,17 @@
             position: relative;
             max-width: 90%;
             width: 500px;
+            /* Initial state for content when modal is not active */
+            opacity: 0; /* Hidden */
+            transform: translateY(20px); /* Slightly off-position */
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out; /* Smooth transition */
         }
+        /* Final state for content when modal is active (overlay.active) */
+        .modal-overlay.active .modal-content {
+            opacity: 1; /* Fully visible */
+            transform: translateY(0); /* Back to normal position */
+        }
+
         @media (max-width: 768px) {
             .tabs-container button {
                 font-size: 0.9rem;
@@ -244,9 +254,9 @@
 
     <!-- Delete Confirmation Modal -->
     <div id="delete-modal-overlay" class="modal-overlay">
-        <div class="modal-content text-center">
-            <h3 class="text-2xl font-bold text-white mb-4">ยืนยันการลบข้อมูล</h3>
-            <p class="text-gray-300 mb-6">คุณแน่ใจหรือไม่ที่จะลบข้อมูลของ <span id="delete-name" class="font-semibold text-yellow-400"></span> (Code: <span id="delete-code-per" class="font-semibold text-yellow-400"></span>)?</p>
+        <div class="modal-content">
+            <h3 class="text-2xl font-bold text-white mb-4 text-center">ยืนยันการลบข้อมูล</h3>
+            <p class="text-gray-300 mb-6 text-center">คุณแน่ใจหรือไม่ที่จะลบข้อมูลของ <span id="delete-name" class="font-semibold text-yellow-400"></span> (Code: <span id="delete-code-per" class="font-semibold text-yellow-400"></span>)?</p>
             <form id="delete-form" class="space-y-4">
                 <input type="hidden" id="delete-no-input">
                 <div>
@@ -288,7 +298,7 @@
         const editNoInput = document.getElementById('edit-no');
         const editTitleSelect = document.getElementById('edit-title');
         const editCustomTitleInput = document.getElementById('edit-custom-title');
-        const editNameInput = document = document.getElementById('edit-name');
+        const editNameInput = document.getElementById('edit-name');
         const editBirthdayInput = document.getElementById('edit-birthday');
         const editWorkdayInput = document.getElementById('edit-workday');
         const editPhoneInput = document.getElementById('edit-phone');
@@ -647,29 +657,7 @@
 
         // Function to render the Saving Report Dashboard
         function renderSavingReport() {
-            // Calculate summary statistics based on current filtered data
-            const currentFilteredSavingData = savingData.filter(item => {
-                const itemDate = new Date(item.date); // Assuming item.date is in YYYY-MM-DD format
-                let dateMatches = true;
-
-                if (currentSavingReportView === 'daily' && selectedReportDate) {
-                    const dateFilter = new Date(selectedReportDate);
-                    dateMatches = itemDate.toDateString() === dateFilter.toDateString();
-                } else if (currentSavingReportView === 'monthly' && selectedReportMonth) {
-                    const [year, month] = selectedReportMonth.split('-');
-                    dateMatches = itemDate.getFullYear() == year && (itemDate.getMonth() + 1) == month;
-                }
-                return dateMatches; // Filter by date/month first
-            }).filter(item => { // Then filter by search term
-                return Object.values(item).some(val =>
-                    String(val).toLowerCase().includes(savingSearchTerm.toLowerCase())
-                );
-            });
-
-            const totalSavingAmount = currentFilteredSavingData.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-            const numberOfSavingTransactions = currentFilteredSavingData.length;
-            const averageSavingAmount = numberOfSavingTransactions > 0 ? (totalSavingAmount / numberOfSavingTransactions) : 0;
-
+            // No summary calculation here, just render the structure
             contentArea.innerHTML = `
                 <div>
                     <h2 class="text-3xl font-bold text-white mb-6 text-center">ภาพรวมรายงานการออม</h2>
@@ -678,20 +666,20 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                         <div class="bg-indigo-600 rounded-lg p-5 shadow-lg flex flex-col items-center justify-center text-center">
                             <p class="text-sm font-medium text-indigo-200">ยอดรวมเงินออม</p>
-                            <p class="text-3xl font-extrabold text-white mt-2">
-                                ${totalSavingAmount.toLocaleString('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 2 })}
+                            <p id="total-saving-display" class="text-3xl font-extrabold text-white mt-2">
+                                0.00 THB
                             </p>
                         </div>
                         <div class="bg-purple-600 rounded-lg p-5 shadow-lg flex flex-col items-center justify-center text-center">
                             <p class="text-sm font-medium text-purple-200">จำนวนรายการ</p>
-                            <p class="text-3xl font-extrabold text-white mt-2">
-                                ${numberOfSavingTransactions.toLocaleString('th-TH')} รายการ
+                            <p id="num-transactions-display" class="text-3xl font-extrabold text-white mt-2">
+                                0 รายการ
                             </p>
                         </div>
                         <div class="bg-teal-600 rounded-lg p-5 shadow-lg flex flex-col items-center justify-center text-center">
                             <p class="text-sm font-medium text-teal-200">ออมเฉลี่ยต่อรายการ</p>
-                            <p class="text-3xl font-extrabold text-white mt-2">
-                                ${averageSavingAmount.toLocaleString('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 2 })}
+                            <p id="avg-saving-display" class="text-3xl font-extrabold text-white mt-2">
+                                0.00 THB
                             </p>
                         </div>
                     </div>
@@ -756,17 +744,17 @@
                 currentSavingReportView = 'all';
                 selectedReportDate = '';
                 selectedReportMonth = '';
-                renderSavingReport(); // Re-render to update active state and filter
+                updateSavingTable(); // Just update table, not re-render whole section
             });
             document.getElementById('sub-tab-daily').addEventListener('click', () => {
                 currentSavingReportView = 'daily';
                 selectedReportMonth = ''; // Clear month selection
-                renderSavingReport(); // Re-render to update active state and show date input
+                updateSavingTable(); // Just update table, not re-render whole section
             });
             document.getElementById('sub-tab-monthly').addEventListener('click', () => {
                 currentSavingReportView = 'monthly';
                 selectedReportDate = ''; // Clear daily selection
-                renderSavingReport(); // Re-render to update active state and show month input
+                updateSavingTable(); // Just update table, not re-render whole section
             });
 
             // Event listeners for date/month inputs
@@ -800,14 +788,14 @@
                 window.print();
             });
 
-            updateSavingTable(); // Initial load for the table based on current view
+            updateSavingTable(); // Initial load for the table and dashboard based on current view
             fetchData('saving', (data) => {
                 savingData = data;
                 updateSavingTable();
             });
         }
 
-        // Function to update the saving data table dynamically
+        // Function to update the saving data table dynamically AND update dashboard summary
         function updateSavingTable() {
             const tbody = document.getElementById('saving-data-body');
             tbody.innerHTML = ''; // Clear existing rows
@@ -831,6 +819,16 @@
                 return dateMatches && searchTermMatches;
             });
 
+            // Calculate summary statistics for the filtered data
+            const totalSavingAmount = filteredData.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+            const numberOfSavingTransactions = filteredData.length;
+            const averageSavingAmount = numberOfSavingTransactions > 0 ? (totalSavingAmount / numberOfSavingTransactions) : 0;
+
+            // Update dashboard summary displays
+            document.getElementById('total-saving-display').textContent = totalSavingAmount.toLocaleString('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 2 });
+            document.getElementById('num-transactions-display').textContent = `${numberOfSavingTransactions.toLocaleString('th-TH')} รายการ`;
+            document.getElementById('avg-saving-display').textContent = averageSavingAmount.toLocaleString('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 2 });
+
             // Adjust colspan for "ไม่พบข้อมูลการออม" based on visible columns (5 columns)
             const visibleColumnCount = 5; 
 
@@ -850,6 +848,34 @@
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${formatDateToThaiShort(item.date)}</td>
                 `;
             });
+
+            // Toggle visibility of date filters container based on current view
+            const dateFiltersContainer = document.getElementById('date-filters-container');
+            const dailyDateFilter = document.getElementById('daily-date-filter');
+            const monthlyDateFilter = document.getElementById('monthly-date-filter');
+            
+            if (currentSavingReportView === 'daily') {
+                dateFiltersContainer.classList.remove('hidden');
+                dailyDateFilter.classList.remove('hidden');
+                monthlyDateFilter.classList.add('hidden');
+            } else if (currentSavingReportView === 'monthly') {
+                dateFiltersContainer.classList.remove('hidden');
+                dailyDateFilter.classList.add('hidden');
+                monthlyDateFilter.classList.remove('hidden');
+            } else {
+                dateFiltersContainer.classList.add('hidden');
+            }
+
+            // Update sub-tab active styles
+            document.querySelectorAll('#content-area .flex.space-x-2 button').forEach(btn => {
+                btn.classList.remove('bg-indigo-500', 'text-white', 'shadow-md');
+                btn.classList.add('text-gray-300', 'hover:bg-gray-500');
+            });
+            const activeSubTab = document.getElementById(`sub-tab-${currentSavingReportView}`);
+            if (activeSubTab) {
+                activeSubTab.classList.add('bg-indigo-500', 'text-white', 'shadow-md');
+                activeSubTab.classList.remove('text-gray-300', 'hover:bg-gray-500');
+            }
         }
 
         // Handle form submission for Soldier Registration
