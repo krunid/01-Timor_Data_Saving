@@ -328,6 +328,16 @@
         ];
         const allPredefinedTitles = [...generalTitles, ...militaryRanks];
 
+        // Helper function to format date to short Thai format (DD/MM/YYYY + 543)
+        function formatDateToThaiShort(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            if (isNaN(date)) return dateString; // Return original if invalid date
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Months are 0-indexed
+            const yearThai = date.getFullYear() + 543; // Convert to Thai Buddhist calendar
+            return `${day}/${month}/${yearThai}`;
+        }
 
         // Function to show/hide loading overlay
         function showLoading(show, progress = 0) {
@@ -494,11 +504,6 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">birthday</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">workday</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">phone</th>
-                                    <th class="px-4 py-3 whitespace-pre-wrap text-left text-xs font-medium text-gray-300 uppercase tracking-wider">address</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Id line</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Fb</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">remake</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">timestamp</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
@@ -535,8 +540,11 @@
                 )
             );
 
+            // Adjust colspan for "ไม่พบข้อมูลทหาร" based on visible columns (8 columns)
+            const visibleColumnCount = 8; 
+
             if (filteredData.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="13" class="px-4 py-3 text-center text-gray-400">ไม่พบข้อมูลทหาร</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${visibleColumnCount}" class="px-4 py-3 text-center text-gray-400">ไม่พบข้อมูลทหาร</td></tr>`;
                 return;
             }
 
@@ -548,14 +556,9 @@
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.Code_per}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.title}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.name}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.birthday}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.workday}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${formatDateToThaiShort(item.birthday)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${formatDateToThaiShort(item.workday)}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.phone}</td>
-                    <td class="px-4 py-3 whitespace-pre-wrap text-sm text-gray-200">${item.address}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item['Id line']}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.Fb}</td>
-                    <td class="px-4 py-3 whitespace-pre-wrap text-sm text-gray-200">${item.remake}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.timestamp}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
                         <div class="flex space-x-2">
                             <button class="text-indigo-400 hover:text-indigo-600 focus:outline-none transition-colors duration-200 edit-btn" data-no="${item.no}" title="แก้ไข">
@@ -645,14 +648,20 @@
             // Calculate summary statistics based on current filtered data
             const currentFilteredSavingData = savingData.filter(item => {
                 const itemDate = new Date(item.date); // Assuming item.date is in YYYY-MM-DD format
+                let dateMatches = true;
+
                 if (currentSavingReportView === 'daily' && selectedReportDate) {
                     const dateFilter = new Date(selectedReportDate);
-                    return itemDate.toDateString() === dateFilter.toDateString();
+                    dateMatches = itemDate.toDateString() === dateFilter.toDateString();
                 } else if (currentSavingReportView === 'monthly' && selectedReportMonth) {
                     const [year, month] = selectedReportMonth.split('-');
-                    return itemDate.getFullYear() == year && (itemDate.getMonth() + 1) == month;
+                    dateMatches = itemDate.getFullYear() == year && (itemDate.getMonth() + 1) == month;
                 }
-                return true; // 'all' view or no filter applied
+                return dateMatches; // Filter by date/month first
+            }).filter(item => { // Then filter by search term
+                return Object.values(item).some(val =>
+                    String(val).toLowerCase().includes(savingSearchTerm.toLowerCase())
+                );
             });
 
             const totalSavingAmount = currentFilteredSavingData.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
@@ -730,7 +739,6 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">name</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">amount</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">date</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">timestamp</th>
                                 </tr>
                             </thead>
                             <tbody id="saving-data-body" class="bg-gray-700 divide-y divide-gray-600">
@@ -821,9 +829,11 @@
                 return dateMatches && searchTermMatches;
             });
 
+            // Adjust colspan for "ไม่พบข้อมูลการออม" based on visible columns (5 columns)
+            const visibleColumnCount = 5; 
 
             if (filteredData.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-3 text-center text-gray-400">ไม่พบข้อมูลการออม</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${visibleColumnCount}" class="px-4 py-3 text-center text-gray-400">ไม่พบข้อมูลการออม</td></tr>`;
                 return;
             }
 
@@ -835,8 +845,7 @@
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.Code_per}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.name}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${parseFloat(item.amount).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.date}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${item.timestamp}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-200">${formatDateToThaiShort(item.date)}</td>
                 `;
             });
         }
